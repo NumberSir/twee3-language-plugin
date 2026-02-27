@@ -1,0 +1,90 @@
+/**
+ * https://github.com/iftechfoundation/twine-specs/blob/master/twee-3-specification.md
+ */
+
+{
+  parserClass='com.github.numbersir.twee3.parser.Twee3Parser'
+
+  extends='com.intellij.extapi.psi.ASTWrapperPsiElement'
+
+  psiClassPrefix='Twee3'
+  psiImplClassSuffix='Impl'
+  psiPackage='com.github.numbersir.twee3.psi'
+  psiImplPackage='com.github.numbersir.twee3.psi.impl'
+
+  elementTypeHolderClass='com.github.numbersir.twee3.psi.Twee3Types'
+  elementTypeClass='com.github.numbersir.twee3.psi.Twee3ElementType'
+  tokenTypeClass='com.github.numbersir.twee3.psi.Twee3TokenType'
+
+  psiImplUtilClass='com.github.numbersir.twee3.psi.impl.Twee3PsiImplUtil'
+
+  tokens = [
+//    DOUBLE_COLON    = '::'
+//    COLON           = ':'
+//    LEFT_BRACKET    = '['
+//    RIGHT_BRACKET   = ']'
+//    LEFT_BRACE      = '{'
+//    RIGHT_BRACE     = '}'
+//    COMMA           = ','
+//
+//    COMMENT_INLINE      = 'regexp://[^\n\r]*'
+//    COMMENT_BLOCK       = 'regexp:(/\*(.|\r|\n)*\*/|/%(.|\r|\n)*%/|<!--(.|\r|\n)*-->)'
+//
+//    WS_EOL  = 'regexp:(\n|\r|\r\n)'
+//    WS_INL  = 'regexp:[ \t]'
+//
+//    STRING  = "regexp:('([^\\'\r\n]|\\[^\r\n])*'?|\"([^\\\"\r\n]|\\[^\r\n])*\"?)"
+//
+//    TEXT_CHAR_INLINE    = 'regexp:[^ \n\r\s\[\]\{\}\\]'
+//    ESCAPED_CHAR        = 'regexp:\\[^\n\r]'
+    ANY_CHAR_INLINE     = 'regexp:[^\n\r]'
+    ANY_CHAR            = 'regexp:[\S\s]'
+  ]
+}
+
+
+tweeFile ::= comment* (WS_INL | WS_EOL)* comment* passage (comment* (WS_INL | WS_EOL)* comment* passage)*
+
+comment ::= commentInline | commentBlock
+private commentInline ::= COMMENT_INLINE (WS_EOL | <<eof>>)
+private commentBlock ::= COMMENT_BLOCK
+
+passage ::= passageHeader passageContent {
+  methods=[getPassageNameText getPassageContentText]
+}
+
+// Header 必须在一行内
+passageHeader ::= '::' WS_INL* passageName WS_INL* [tagBlock] WS_INL* [metadataBlock] (WS_EOL | <<eof>>) {
+  methods=[getPassageNameText getPassageTags]
+}
+passageName ::= namePart (WS_INL+ namePart)* {
+  methods=[getText]
+}
+private namePart ::= (ESCAPED_CHAR | TEXT_CHAR_INLINE | COLON | COMMA)+
+
+tagBlock ::= '[' WS_INL* tagSequence WS_INL* ']'
+private tagSequence ::= (tag (WS_INL+ tag)*)
+tag ::= (TEXT_CHAR_INLINE | ESCAPED_CHAR)+ {
+  methods=[getText]
+}
+
+metadataBlock ::= '{' WS_INL* metadataPair (WS_INL* ',' WS_INL* metadataPair)* WS_INL* '}' {
+  methods=[getMetadataMap]
+}
+metadataPair ::= metadataKey WS_INL* ':' WS_INL* metadataValue
+metadataKey ::= STRING {
+  methods=[getText]
+}
+metadataValue ::= STRING {
+  methods=[getText]
+}
+
+passageContent ::= (lineContent? WS_EOL)* lineContent? {
+  methods=[getText]
+}
+private lineContent ::= !'::' contentItem+
+
+private contentItem ::= TEXT_CHAR_INLINE | ESCAPED_CHAR | WS_INL |
+                        LEFT_BRACKET | RIGHT_BRACKET | LEFT_BRACE | RIGHT_BRACE |
+                        COLON | DOUBLE_COLON | COMMA | STRING |
+                        COMMENT_INLINE | COMMENT_BLOCK | ANY_CHAR_INLINE
